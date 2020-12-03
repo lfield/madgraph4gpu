@@ -1,3 +1,6 @@
+#define DPCT_USM_LEVEL_NONE
+#include <CL/sycl.hpp>
+#include <dpct/dpct.hpp>
 #include <algorithm> // perf stats
 #include <cstring>
 #include <iomanip>
@@ -11,15 +14,13 @@
 
 #include "rambo.h"
 #include "timer.h"
+#include <cmath>
 
 #define gpuErrchk3(ans)                                                        \
   { gpuAssert3((ans), __FILE__, __LINE__); }
 
-inline void gpuAssert3(cudaError_t code, const char *file, int line,
+inline void gpuAssert3(int code, const char *file, int line,
                        bool abort = true) {
-  if (code != cudaSuccess) {
-    printf("GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
-  }
 }
 
 #define TIMERTYPE std::chrono::high_resolution_clock
@@ -74,7 +75,7 @@ int main(int argc, char **argv) {
   if (numiter == 0)
     return usage(argv[0]);
 
-  cudaFree(0);
+    dpct::dpct_free(0);
   if (verbose)
     std::cout << "# iterations: " << numiter << std::endl;
 
@@ -98,8 +99,7 @@ int main(int argc, char **argv) {
   double* meHostPtr = new double[dim*1];
   double *meDevPtr =0;
   int num_bytes_back = 1 * dim * sizeof(double);
-  cudaMalloc((void**)&meDevPtr, num_bytes_back);
-
+    dpct::dpct_malloc((void **)&meDevPtr, num_bytes_back);
 
   std::vector<double> matrixelementvector;
 
@@ -120,8 +120,8 @@ int main(int argc, char **argv) {
     //new
     int num_bytes = 3*6*dim * sizeof(double);
     double *allmomenta = 0;
-    cudaMalloc((void**)&allmomenta, num_bytes);
-    cudaMemcpy(allmomenta,lp,num_bytes,cudaMemcpyHostToDevice);
+        dpct::dpct_malloc((void **)&allmomenta, num_bytes);
+        dpct::dpct_memcpy(allmomenta, lp, num_bytes, dpct::host_to_device);
 
     //gpuErrchk3(cudaMemcpy3D(&tdp));
 
@@ -134,12 +134,55 @@ int main(int argc, char **argv) {
     // Evaluate matrix element
     // later process.sigmaKin(ncomb, goodhel, ntry, sum_hel, ngood, igood,
     // jhel);
-    sigmaKin<<<gpublocks, gputhreads>>>(allmomenta,  meDevPtr);//, debug, verbose);
-    gpuErrchk3( cudaPeekAtLastError() );
+        /*
+        DPCT1049:1: The workgroup size passed to the SYCL kernel may exceed the
+        limit. To get the device limit, query info::device::max_work_group_size.
+        Adjust the workgroup size if needed.
+        */
+        {
+            dpct::buffer_t allmomenta_buf_ct0 = dpct::get_buffer(allmomenta);
+            dpct::buffer_t meDevPtr_buf_ct1 = dpct::get_buffer(meDevPtr);
+            dpct::get_default_queue().submit([&](sycl::handler &cgh) {
+                extern dpct::constant_memory<int, 2> cHel;
+                extern dpct::constant_memory<double, 1> cIPC;
+                extern dpct::constant_memory<double, 1> cIPD;
+
+                // accessors to device memory
+                auto cHel_acc_ct1 = cHel.get_access(cgh);
+                auto cIPC_acc_ct1 = cIPC.get_access(cgh);
+                auto cIPD_acc_ct1 = cIPD.get_access(cgh);
+                auto allmomenta_acc_ct0 =
+                    allmomenta_buf_ct0
+                        .get_access<sycl::access::mode::read_write>(cgh);
+                auto meDevPtr_acc_ct1 =
+                    meDevPtr_buf_ct1.get_access<sycl::access::mode::read_write>(
+                        cgh);
+
+                cgh.parallel_for(
+                    sycl::nd_range<3>(sycl::range<3>(1, 1, gpublocks) *
+                                          sycl::range<3>(1, 1, gputhreads),
+                                      sycl::range<3>(1, 1, gputhreads)),
+                    [=](sycl::nd_item<3> item_ct1) {
+                        sigmaKin((double *)(&allmomenta_acc_ct0[0]),
+                                 (double *)(&meDevPtr_acc_ct1[0]), item_ct1,
+                                 dpct::accessor<int, dpct::constant, 2>(
+                                     cHel_acc_ct1),
+                                 cIPC_acc_ct1.get_pointer(),
+                                 cIPD_acc_ct1.get_pointer());
+                    });
+            });
+        } //, debug, verbose);
+        /*
+        DPCT1010:2: SYCL uses exceptions to report errors and does not use the
+        error codes. The call was replaced with 0. You need to rewrite this
+        code.
+        */
+        gpuErrchk3(0);
     //gpuErrchk3(cudaMemcpy2D(meHostPtr, sizeof(double), meDevPtr, mePitch,
     //                        sizeof(double), dim, cudaMemcpyDeviceToHost));
 
-   cudaMemcpy(meHostPtr, meDevPtr, 1 * dim*sizeof(double), cudaMemcpyDeviceToHost);
+        dpct::dpct_memcpy(meHostPtr, meDevPtr, 1 * dim * sizeof(double),
+                          dpct::device_to_host);
 
     if (verbose)
       std::cout << "***********************************" << std::endl
@@ -205,7 +248,7 @@ int main(int argc, char **argv) {
     float mean = sum / num_wts;
     float sq_sum = std::inner_product(wavetimes.begin(), wavetimes.end(),
                                       wavetimes.begin(), 0.0);
-    float stdev = std::sqrt(sq_sum / num_wts - mean * mean);
+        float stdev = std::sqrt(sq_sum / num_wts - mean * mean);
     std::vector<float>::iterator mintime =
         std::min_element(wavetimes.begin(), wavetimes.end());
     std::vector<float>::iterator maxtime =
@@ -216,7 +259,7 @@ int main(int argc, char **argv) {
     float meanelem = sumelem / num_mes;
     float sqselem = std::inner_product(matrixelementvector.begin(), matrixelementvector.end(), 
                                        matrixelementvector.begin(), 0.0);
-    float stdelem = std::sqrt(sqselem / num_mes - meanelem * meanelem);
+        float stdelem = std::sqrt(sqselem / num_mes - meanelem * meanelem);
     std::vector<double>::iterator maxelem = std::max_element(
         matrixelementvector.begin(), matrixelementvector.end());
     std::vector<double>::iterator minelem = std::min_element(
@@ -240,14 +283,18 @@ int main(int argc, char **argv) {
               << "NumMatrixElements     = " << num_mes << std::endl
               << "MatrixElementsPerSec  = " << num_mes/sum << " sec^-1" << std::endl;
 
-    std::cout << "***********************************" << std::endl
-              << "NumMatrixElements     = " << num_mes << std::endl
-              << std::scientific
-              << "MeanMatrixElemValue   = " << meanelem << " GeV^" << meGeVexponent << std::endl
-              << "StdErrMatrixElemValue = " << stdelem/sqrt(num_mes) << " GeV^" << meGeVexponent << std::endl
-              << "StdDevMatrixElemValue = " << stdelem << " GeV^" << meGeVexponent << std::endl
-              << "MinMatrixElemValue    = " << *minelem << " GeV^" << meGeVexponent << std::endl
-              << "MaxMatrixElemValue    = " << *maxelem << " GeV^" << meGeVexponent << std::endl;
+        std::cout << "***********************************" << std::endl
+                  << "NumMatrixElements     = " << num_mes << std::endl
+                  << std::scientific << "MeanMatrixElemValue   = " << meanelem
+                  << " GeV^" << meGeVexponent << std::endl
+                  << "StdErrMatrixElemValue = " << stdelem / sqrt(num_mes)
+                  << " GeV^" << meGeVexponent << std::endl
+                  << "StdDevMatrixElemValue = " << stdelem << " GeV^"
+                  << meGeVexponent << std::endl
+                  << "MinMatrixElemValue    = " << *minelem << " GeV^"
+                  << meGeVexponent << std::endl
+                  << "MaxMatrixElemValue    = " << *maxelem << " GeV^"
+                  << meGeVexponent << std::endl;
   }
   delete[] lp;
 
