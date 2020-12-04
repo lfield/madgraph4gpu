@@ -72,7 +72,7 @@ std::unique_ptr<T[], CudaHstDeleter<T>> hstMakeUnique(std::size_t N) {
 };
 #else
 template<typename T = fptype>
-std::unique_ptr<T[]> hstMakeUnique(std::size_t N) { return std::unique_ptr<T[]>{ new T[N] }; };
+std::unique_ptr<T[]> hstMakeUnique(std::size_t N) { return std::unique_ptr<T[]>{ new T[N]() }; };
 #endif
 
 int main(int argc, char **argv)
@@ -587,7 +587,7 @@ int main(int argc, char **argv)
     maxwtim = std::max( maxwtim, wavetimes[iiter] );
   }
   double meanwtim = sumwtim / niter;
-  double stdwtim = std::sqrt( sqswtim / niter - meanwtim * meanwtim );
+  //double stdwtim = std::sqrt( sqswtim / niter - meanwtim * meanwtim );
 
   int nnan = 0;
   double minelem = matrixelementALL[0];
@@ -799,33 +799,52 @@ int main(int argc, char **argv)
 #endif
              << "\"Curand generation\": "
 #ifdef __CUDACC__
-#if defined MGONGPU_CURAND_ONDEVICE
-             << "\"DEVICE (CUDA code)\"," << std::endl
+#if defined MGONGPU_COMMONRAND_ONHOST
+             << "\"COMMON RANDOM HOST (CUDA code)\"," << std::endl
+#elif defined MGONGPU_CURAND_ONDEVICE
+             << "\"CURAND DEVICE (CUDA code)\"," << std::endl
 #elif defined MGONGPU_CURAND_ONHOST
-             << "\"HOST (CUDA code)\"," << std::endl
+             << "\"CURAND HOST (CUDA code)\"," << std::endl
 #endif
 #else
-             << "\"HOST (C++ code)\"," << std::endl
+#if defined MGONGPU_COMMONRAND_ONHOST
+             << "\"COMMON RANDOM (C++ code)\"," << std::endl
+#else
+             << "\"CURAND (C++ code)\"," << std::endl
+#endif
 #endif
              << "\"NumberOfEntries\": " << niter << "," << std::endl
       //<< std::scientific // Not sure about this
-             << "\"TotalTimeInWaveFuncs\": "
-             << "\"" << std::to_string(sumwtim) << " sec\"," << std::endl
-             << "\"MeanTimeInWaveFuncs\": "
-             << "\"" << std::to_string(meanwtim) << " sec\"," << std::endl
-             << "\"StdDevTimeInWaveFuncs\": "
-             << "\"" << std::to_string(stdwtim) << " sec\"," << std::endl
-             << "\"MinTimeInWaveFuncs\": "
-             << "\"" << std::to_string(minwtim) << " sec\"," << std::endl
-             << "\"MaxTimeInWaveFuncs\": "
-             << "\"" << std::to_string(maxwtim) << " sec\"," << std::endl
+
+             << "\"TotalTime[Rnd+Rmb+ME] (123)\": \""
+             << std::to_string(sumgtim+sumrtim+sumwtim) << " sec\","
+             << std::endl
+             << "\"TotalTime[Rambo+ME] (23)\": \""
+             << std::to_string(sumrtim+sumwtim) << " sec\"," << std::endl
+             << "\"TotalTime[RndNumGen] (1)\": \""
+             << std::to_string(sumgtim) << " sec\"," << std::endl
+             << "\"TotalTime[Rambo] (2)\": \""
+             << std::to_string(sumrtim) << " sec\"," << std::endl
+             << "\"TotalTime[MatrixElems] (3)\": \""
+             << std::to_string(sumwtim) << " sec\"," << std::endl
+             << "\"MeanTimeInMatrixElems\": \""
+             << std::to_string(meanwtim) << " sec\"," << std::endl
+             << "\"MinTimeInMatrixElems\": \""
+             << std::to_string(minwtim) << " sec\"," << std::endl
+             << "\"MaxTimeInMatrixElems\": \""
+             << std::to_string(maxwtim) << " sec\"," << std::endl
       //<< "ProcessID:                = " << getpid() << std::endl
       //<< "NProcesses                = " << process.nprocesses << std::endl
              << "\"TotalEventsComputed\": " << nevtALL << "," << std::endl
-             << "\"RamboEventsPerSec\": "
-             << "\"" << std::to_string(nevtALL/sumrtim) << " sec^-1\"," << std::endl
-             << "\"MatrixElemEventsPerSec\": "
-             << "\"" << std::to_string(nevtALL/sumwtim) << " sec^-1\"," << std::endl
+
+             << "\"EvtsPerSec[Rnd+Rmb+ME](123)\": \""
+             << std::to_string(nevtALL/(sumgtim+sumrtim+sumwtim))
+             << " sec^-1\"," << std::endl
+             << "\"EvtsPerSec[Rmb+ME] (23)\": \""
+             << std::to_string(nevtALL/(sumrtim+sumwtim)) << " sec^-1\","
+             << std::endl
+             << "\"EvtsPerSec[MatrixElems] (3)\": \""
+             << std::to_string(nevtALL/sumwtim) << " sec^-1\"," << std::endl
              << "\"NumMatrixElements(notNan)\": " << nevtALL - nnan << "," << std::endl
              << std::scientific
              << "\"MeanMatrixElemValue\": "
