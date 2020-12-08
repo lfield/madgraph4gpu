@@ -1,4 +1,4 @@
-#ifdef CL_SYCL_LANGUAGE_VERSION
+#ifdef SYCL_LANGUAGE_VERSION
 #include <CL/sycl.hpp>
 #endif
 #include <algorithm>
@@ -328,7 +328,7 @@ int main(int argc, char **argv)
     // --- 2a. Fill in momenta of initial state particles on the device
     const std::string riniKey = "2a RamboIni";
     timermap.start( riniKey );
-#ifdef CL_SYCL_LANGUAGE_VERSION
+#ifdef SYCL_LANGUAGE_VERSION
     {
       q_ct1.submit([&](sycl::handler &cgh) {
         auto devMomenta_acc = Momenta_buffer.get_access<sycl::access::mode::read_write>(cgh);
@@ -352,7 +352,7 @@ int main(int argc, char **argv)
     // (i.e. map random numbers to final-state particle momenta for each of nevt events)
     const std::string rfinKey = "2b RamboFin";
     rambtime += timermap.start( rfinKey );
-#ifdef CL_SYCL_LANGUAGE_VERSION
+#ifdef SYCL_LANGUAGE_VERSION
     {
       sycl::buffer Rnarray_buffer{hstRnarray.get(), sycl::range{nRnarray}};
       q_ct1.submit([&](sycl::handler &cgh) {
@@ -404,7 +404,7 @@ int main(int argc, char **argv)
     // 3b. Copy MEs back from device to host
 
     // --- 0d. SGoodHel
-#ifdef CL_SYCL_LANGUAGE_VERSION
+#ifdef SYCL_LANGUAGE_VERSION
     if ( iiter == 0 )
     {
       const std::string ghelKey = "0d SGoodHel";
@@ -446,7 +446,7 @@ int main(int argc, char **argv)
     // --- 3a. SigmaKin
     const std::string skinKey = "3a SigmaKin";
     timermap.start( skinKey );
-#ifdef CL_SYCL_LANGUAGE_VERSION
+#ifdef SYCL_LANGUAGE_VERSION
 #ifndef MGONGPU_NSIGHT_DEBUG
     {
       q_ct1.submit([&](sycl::handler &cgh) {
@@ -477,7 +477,7 @@ int main(int argc, char **argv)
     Proc::sigmaKin(hstMomenta.get(), hstMEs.get(), nevt);
 #endif
 
-#ifdef CL_SYCL_LANGUAGE_VERSION
+#ifdef SYCL_LANGUAGE_VERSION
     // --- 3b. CopyDToH MEs
     const std::string cmesKey = "3b CpDTHmes";
     wavetime += timermap.start( cmesKey );
@@ -665,7 +665,7 @@ int main(int argc, char **argv)
 #elif defined MGONGPU_FPTYPE_FLOAT
               << "FP precision               = FLOAT (nan=" << nnan << ")" << std::endl
 #endif
-#ifdef CL_SYCL_LANGUAGE_VERSION
+#ifdef SYCL_LANGUAGE_VERSION
 #if defined MGONGPU_CXTYPE_CUCOMPLEX
               << "Complex type               = CUCOMPLEX" << std::endl
 #elif defined MGONGPU_CXTYPE_THRUST
@@ -678,10 +678,10 @@ int main(int argc, char **argv)
               << ( neppR == 1 ? " == AOS" : "" ) << std::endl
               << "Momenta memory layout      = AOSOA[" << neppM << "]"
               << ( neppM == 1 ? " == AOS" : "" ) << std::endl
-#ifdef CL_SYCL_LANGUAGE_VERSION
+#ifdef SYCL_LANGUAGE_VERSION
               << "Wavefunction GPU memory    = LOCAL" << std::endl
 #endif
-#ifdef CL_SYCL_LANGUAGE_VERSION
+#ifdef SYCL_LANGUAGE_VERSION
 #if defined MGONGPU_COMMONRAND_ONHOST
               << "Random number generation   = COMMON RANDOM HOST (CUDA code)" << std::endl
 #elif defined MGONGPU_CURAND_ONDEVICE

@@ -1,7 +1,7 @@
 #ifndef RAMBO_H
 #define RAMBO_H 1
 
-#ifdef CL_SYCL_LANGUAGE_VERSION
+#ifdef SYCL_LANGUAGE_VERSION
 #include <CL/sycl.hpp>
 #endif
 #include "mgOnGpuConfig.h"
@@ -51,7 +51,7 @@ namespace rambo2toNm0
   void getMomentaInitial( const fptype energy, // input: energy
                           fptype momenta1d[],  // output: momenta as AOSOA[npagM][npar][4][neppM]
                           sycl::nd_item<3> item_ct1
-#ifndef CL_SYCL_LANGUAGE_VERSION
+#ifndef SYCL_LANGUAGE_VERSION
                           , const int nevt     // input: #events (for cuda: nevt == ndim == gpublocks*gputhreads)
 #endif
                           );
@@ -65,7 +65,7 @@ namespace rambo2toNm0
                         fptype momenta1d[],       // output: momenta as AOSOA[npagM][npar][4][neppM]
                         fptype wgts[]             // output: weights[nevt]
                         , sycl::nd_item<3> item_ct1
-#ifndef CL_SYCL_LANGUAGE_VERSION
+#ifndef SYCL_LANGUAGE_VERSION
                         , const int nevt          // input: #events (for cuda: nevt == ndim == gpublocks*gputhreads)
 #endif
                         );

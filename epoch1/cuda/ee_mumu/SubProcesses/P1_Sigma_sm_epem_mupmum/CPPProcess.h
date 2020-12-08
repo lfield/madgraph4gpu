@@ -8,7 +8,7 @@
 #ifndef MG5_Sigma_sm_epem_mupmum_H
 #define MG5_Sigma_sm_epem_mupmum_H
 
-#ifdef CL_SYCL_LANGUAGE_VERSION
+#ifdef SYCL_LANGUAGE_VERSION
 #include <CL/sycl.hpp>
 #endif
 #include <cassert>
@@ -115,7 +115,7 @@ namespace Proc
 
   //--------------------------------------------------------------------------
 
-#ifdef CL_SYCL_LANGUAGE_VERSION
+#ifdef SYCL_LANGUAGE_VERSION
   SYCL_EXTERNAL
   void sigmaKin_getGoodHel( const fptype* allmomenta, // input: momenta as AOSOA[npagM][npar][4][neppM] with nevt=npagM*neppM
                             bool* isGoodHel,          // output: isGoodHel[ncomb] - device array
@@ -126,7 +126,7 @@ namespace Proc
 
   //--------------------------------------------------------------------------
 
-#ifdef CL_SYCL_LANGUAGE_VERSION
+#ifdef SYCL_LANGUAGE_VERSION
   void sigmaKin_setGoodHel( const bool* isGoodHel, int* cNGoodHel_ptr, int* cGoodHel_ptr); // input: isGoodHel[ncomb] - host array
 #endif
 
@@ -139,7 +139,7 @@ namespace Proc
                  const sycl::accessor<int, 2, sycl::access::mode::read_write> cHel,
                  int *cNGoodHel,
                  int *cGoodHel 
-#ifndef CL_SYCL_LANGUAGE_VERSION
+#ifndef SYCL_LANGUAGE_VERSION
                  , const int nevt          // input: #events (for cuda: nevt == ndim == gpublocks*gputhreads)
 #endif
                  );

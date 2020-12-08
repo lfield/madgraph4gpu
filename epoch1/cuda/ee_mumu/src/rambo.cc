@@ -1,4 +1,4 @@
-#ifdef CL_SYCL_LANGUAGE_VERSION
+#ifdef SYCL_LANGUAGE_VERSION
 #include <CL/sycl.hpp>
 #endif
 #include <cmath>
@@ -26,7 +26,7 @@ namespace rambo2toNm0
   void getMomentaInitial( const fptype energy, // input: energy
                           fptype momenta1d[]   // output: momenta as AOSOA[npagM][npar][4][neppM]
                           , sycl::nd_item<3> item_ct1
-#ifndef CL_SYCL_LANGUAGE_VERSION
+#ifndef SYCL_LANGUAGE_VERSION
                           , const int nevt     // input: #events (for cuda: nevt == ndim == gpublocks*gputhreads)
 #endif
                           )
@@ -36,12 +36,12 @@ namespace rambo2toNm0
     const fptype energy1 = energy/2;
     const fptype energy2 = energy/2;
     const fptype mom = energy/2;
-#ifndef CL_SYCL_LANGUAGE_VERSION
+#ifndef SYCL_LANGUAGE_VERSION
     // ** START LOOP ON IEVT **
     for (int ievt = 0; ievt < nevt; ++ievt)
 #endif
     {
-#ifdef CL_SYCL_LANGUAGE_VERSION
+#ifdef SYCL_LANGUAGE_VERSION
       const int idim = item_ct1.get_local_range().get(2) * item_ct1.get_group(2) + item_ct1.get_local_id(2); // event# == threadid
       const int ievt = idim;
       //printf( "getMomentaInitial: ievt %d\n", ievt );
@@ -70,7 +70,7 @@ namespace rambo2toNm0
                         fptype momenta1d[],       // output: momenta as AOSOA[npagM][npar][4][neppM]
                         fptype wgts[]             // output: weights[nevt]
                         , sycl::nd_item<3> item_ct1             
-#ifndef CL_SYCL_LANGUAGE_VERSION
+#ifndef SYCL_LANGUAGE_VERSION
                         , const int nevt          // input: #events (for cuda: nevt == ndim == gpublocks*gputhreads)
 #endif
                         )
@@ -102,12 +102,12 @@ namespace rambo2toNm0
     for (int kpar = 2; kpar < nparf; kpar++)
       z[kpar] = (z[kpar] - sycl::log((double)fptype(kpar)));
 
-#ifndef CL_SYCL_LANGUAGE_VERSION
+#ifndef SYCL_LANGUAGE_VERSION
     // ** START LOOP ON IEVT **
     for (int ievt = 0; ievt < nevt; ++ievt)
 #endif
     {
-#ifdef CL_SYCL_LANGUAGE_VERSION
+#ifdef SYCL_LANGUAGE_VERSION
       const int idim = item_ct1.get_local_range().get(2) * item_ct1.get_group(2) + item_ct1.get_local_id(2); // event# == threadid
       const int ievt = idim;
       //printf( "getMomentaFinal:   ievt %d\n", ievt );
@@ -165,7 +165,7 @@ namespace rambo2toNm0
       if (nparf != 2)
         wt = (2. * nparf - 4.) * sycl::log((double)energy) + z[nparf-1];
 
-#ifndef CL_SYCL_LANGUAGE_VERSION
+#ifndef SYCL_LANGUAGE_VERSION
       // issue warnings if weight is too small or too large
       static int iwarn[5] = {0,0,0,0,0};
       if (wt < -180.) {
